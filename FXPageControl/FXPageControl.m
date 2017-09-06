@@ -90,10 +90,42 @@ const CGPathRef FXPageControlDotShapeTriangle = (const CGPathRef)3;
     if (_selectedDotShape > LAST_SHAPE) CGPathRelease(_selectedDotShape);
 }
 
+- (CGSize)sizeForDotAtIndex:(NSInteger)index
+{
+    CGSize size = CGSizeZero;
+    if ([_delegate respondsToSelector:@selector(pageControl:sizeForDotAtIndex:)])
+    {
+        size = [_delegate pageControl:self sizeForDotAtIndex:index];
+    }
+    if (CGSizeEqualToSize(size, CGSizeZero)) {
+        size = CGSizeMake(_dotSize, _dotSize);
+    }
+    return size;
+}
+
 - (CGSize)sizeForNumberOfPages:(__unused NSInteger)pageCount
 {
-    CGFloat width = _dotSize + (_dotSize + _dotSpacing) * (_numberOfPages - 1);
-    return _vertical? CGSizeMake(_dotSize, width): CGSizeMake(width, _dotSize);
+    CGSize size = CGSizeZero;
+    for (int i = 0; i < _numberOfPages; i++)
+    {
+        CGSize dotSize = [self sizeForDotAtIndex:i];
+        if (_vertical)
+        {
+            size.width = MAX(size.width, dotSize.width);
+            size.height += dotSize.height;
+        }
+        else
+        {
+            size.width += dotSize.width;
+            size.height = MAX(size.height, dotSize.height);
+        }
+    }
+    if (_vertical) {
+        size.height += _dotSpacing * (_numberOfPages - 1);
+    } else {
+        size.width += _dotSpacing * (_numberOfPages - 1);
+    }
+    return size;
 }
 
 - (void)updateCurrentPageDisplay
@@ -116,6 +148,7 @@ const CGPathRef FXPageControlDotShapeTriangle = (const CGPathRef)3;
             CGContextTranslateCTM(context, (self.frame.size.width - size.width) / 2, self.frame.size.height / 2);
         }
 
+        CGFloat offset = 0;
         for (int i = 0; i < _numberOfPages; i++)
         {
             UIImage *dotImage = nil;
@@ -211,7 +244,8 @@ const CGPathRef FXPageControlDotShapeTriangle = (const CGPathRef)3;
             [dotColor setFill];
 
             CGContextSaveGState(context);
-            CGFloat offset = (_dotSize + _dotSpacing) * i + _dotSize / 2;
+            CGSize thisDotSize = [self sizeForDotAtIndex:i];
+            offset += (_vertical ? thisDotSize.height : thisDotSize.width)/ 2;
             CGContextTranslateCTM(context, _vertical? 0: offset, _vertical? offset: 0);
 
             if (dotShadowColor && ![dotShadowColor isEqual:[UIColor clearColor]])
@@ -252,6 +286,7 @@ const CGPathRef FXPageControlDotShapeTriangle = (const CGPathRef)3;
                 CGContextDrawPath(context, kCGPathFillStroke);
             }
             CGContextRestoreGState(context);
+            offset += (_vertical ? thisDotSize.height : thisDotSize.width) / 2 + _dotSpacing;
         }
     }
 }
